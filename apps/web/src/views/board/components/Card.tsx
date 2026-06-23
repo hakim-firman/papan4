@@ -8,9 +8,7 @@ import {
 import { twMerge } from "tailwind-merge";
 
 import Avatar from "~/components/Avatar";
-import Badge from "~/components/Badge";
 import CircularProgress from "~/components/CircularProgress";
-import LabelIcon from "~/components/LabelIcon";
 import { useLocalisation } from "~/hooks/useLocalisation";
 import { getAvatarUrl } from "~/utils/helpers";
 
@@ -67,100 +65,108 @@ const Card = ({
   const hasAttachments = attachments && attachments.length > 0;
   const hasDueDate = !!dueDate;
 
+  const hasMeta =
+    members.length > 0 ||
+    checklists.length > 0 ||
+    hasDescription ||
+    comments.length > 0 ||
+    hasDueDate ||
+    hasAttachments;
+
   return (
-    <div className="flex flex-col overflow-hidden rounded-md border border-light-200 bg-light-50 px-3 py-2 text-sm text-neutral-900 dark:border-dark-200 dark:bg-dark-200 dark:text-dark-1000 dark:hover:bg-dark-300">
+    <div className="flex flex-col overflow-hidden rounded-lg bg-trello-card px-3 py-2 text-sm text-[#172B4D] shadow-[0_1px_1px_rgba(9,30,66,0.25)] hover:bg-[#F7F8F9] dark:bg-trello-card-dark dark:text-dark-1000 dark:hover:bg-[#282E33]">
+      {/* Trello-style coloured label bars */}
+      {labels.length > 0 && (
+        <div className="mb-1.5 flex flex-wrap gap-1">
+          {labels.map((label, i) => (
+            <span
+              key={`${label.name}-${i}`}
+              title={label.name}
+              className="h-2 min-w-[40px] rounded-[4px]"
+              style={{ backgroundColor: label.colourCode ?? "#8590A2" }}
+            />
+          ))}
+        </div>
+      )}
+
       {ticketNumber && (
         <span className="mb-1 text-xs text-light-700 dark:text-dark-800">
           {ticketNumber}
         </span>
       )}
-      <span className="break-words">{title}</span>
-      {labels.length ||
-      members.length ||
-      checklists.length > 0 ||
-      hasDescription ||
-      comments.length > 0 ||
-      hasDueDate ||
-      hasAttachments ? (
-        <div className="mt-2 flex flex-col justify-end">
-          <div className="space-x-0.5">
-            {labels.map((label) => (
-              <Badge
-                value={label.name}
-                iconLeft={<LabelIcon colourCode={label.colourCode} />}
-              />
-            ))}
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-1">
-            <div className="flex items-center gap-2">
-              {hasDescription && (
-                <div className="flex items-center gap-1 text-light-700 dark:text-dark-800">
-                  <HiBars3BottomLeft className="h-4 w-4" />
-                </div>
-              )}
-              {hasDueDate && dueDate && (
-                <div
-                  className={twMerge(
-                    "flex items-center gap-1",
-                    isOverdue
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-light-800 dark:text-dark-800",
-                  )}
-                >
-                  <HiOutlineClock className="h-4 w-4" />
-                  <span className="text-[11px]">
-                    {format(dueDate, showYear ? "do MMM yyyy" : "do MMM", {
-                      locale: dateLocale,
-                    })}
-                  </span>
-                </div>
-              )}
-              {comments.length > 0 && (
-                <div className="flex items-center gap-1 text-light-700 dark:text-dark-800">
-                  <HiChatBubbleLeft className="h-4 w-4" />
-                </div>
-              )}
-              {hasAttachments && (
-                <div className="flex items-center gap-1 text-light-700 dark:text-dark-800">
-                  <HiOutlinePaperClip className="h-4 w-4" />
-                </div>
-              )}
-            </div>
-            <div className="flex items-center justify-end gap-1">
-              {checklists.length > 0 && (
-                <div className="flex items-center gap-1 rounded-full border-[1px] border-light-300 px-2 py-1 dark:border-dark-600">
-                  <CircularProgress
-                    progress={progress || 2}
-                    size="sm"
-                    className="flex-shrink-0"
-                  />
-                  <span className="text-[10px] text-light-900 dark:text-dark-950">
-                    {completedItems}/{totalItems}
-                  </span>
-                </div>
-              )}
-              {members.length > 0 && (
-                <div className="isolate flex justify-end -space-x-1 overflow-hidden">
-                  {members.map(({ user, email }) => {
-                    const avatarUrl = user?.image
-                      ? getAvatarUrl(user.image)
-                      : undefined;
 
-                    return (
-                      <Avatar
-                        name={user?.name ?? ""}
-                        email={user?.email ?? email}
-                        imageUrl={avatarUrl}
-                        size="sm"
-                      />
-                    );
+      <span className="break-words leading-5">{title}</span>
+
+      {hasMeta && (
+        <div className="mt-2 flex items-center justify-between gap-1">
+          <div className="flex items-center gap-2">
+            {hasDescription && (
+              <div className="flex items-center gap-1 text-light-800 dark:text-dark-800">
+                <HiBars3BottomLeft className="h-4 w-4" />
+              </div>
+            )}
+            {hasDueDate && dueDate && (
+              <div
+                className={twMerge(
+                  "flex items-center gap-1 rounded px-1 py-0.5",
+                  isOverdue
+                    ? "bg-trello-label-red/20 text-red-700 dark:text-red-400"
+                    : "text-light-800 dark:text-dark-800",
+                )}
+              >
+                <HiOutlineClock className="h-4 w-4" />
+                <span className="text-[11px]">
+                  {format(dueDate, showYear ? "do MMM yyyy" : "do MMM", {
+                    locale: dateLocale,
                   })}
-                </div>
-              )}
-            </div>
+                </span>
+              </div>
+            )}
+            {comments.length > 0 && (
+              <div className="flex items-center gap-1 text-light-800 dark:text-dark-800">
+                <HiChatBubbleLeft className="h-4 w-4" />
+              </div>
+            )}
+            {hasAttachments && (
+              <div className="flex items-center gap-1 text-light-800 dark:text-dark-800">
+                <HiOutlinePaperClip className="h-4 w-4" />
+              </div>
+            )}
+          </div>
+          <div className="flex items-center justify-end gap-1">
+            {checklists.length > 0 && (
+              <div className="flex items-center gap-1 rounded-full border-[1px] border-light-300 px-2 py-1 dark:border-dark-600">
+                <CircularProgress
+                  progress={progress || 2}
+                  size="sm"
+                  className="flex-shrink-0"
+                />
+                <span className="text-[10px] text-light-900 dark:text-dark-950">
+                  {completedItems}/{totalItems}
+                </span>
+              </div>
+            )}
+            {members.length > 0 && (
+              <div className="isolate flex justify-end -space-x-1 overflow-hidden">
+                {members.map(({ user, email }) => {
+                  const avatarUrl = user?.image
+                    ? getAvatarUrl(user.image)
+                    : undefined;
+
+                  return (
+                    <Avatar
+                      name={user?.name ?? ""}
+                      email={user?.email ?? email}
+                      imageUrl={avatarUrl}
+                      size="sm"
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 };

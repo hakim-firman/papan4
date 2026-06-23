@@ -13,6 +13,12 @@ html {
   font-size: 0.8rem;
 }
 
+/* Trello-style drop placeholder: shadowed slot showing where the card lands */
+[data-rbd-placeholder-context-id] {
+  background-color: rgba(0, 0, 0, 0.24);
+  border-radius: 8px;
+}
+
 .gradient-border::before {
   background: conic-gradient(
     from 0deg,

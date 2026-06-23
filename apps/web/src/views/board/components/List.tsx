@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 import { t } from "@lingui/core/macro";
+import { useState } from "react";
 import { Draggable } from "react-beautiful-dnd";
 import { useForm } from "react-hook-form";
 import {
   HiEllipsisHorizontal,
-  HiOutlinePlusSmall,
+  HiOutlinePlus,
   HiOutlineSquaresPlus,
   HiOutlineTrash,
 } from "react-icons/hi2";
@@ -16,11 +17,13 @@ import { Tooltip } from "~/components/Tooltip";
 import { usePermissions } from "~/hooks/usePermissions";
 import { useModal } from "~/providers/modal";
 import { api } from "~/utils/api";
+import { InlineCardComposer } from "./InlineComposers";
 
 interface ListProps {
   children: ReactNode;
   index: number;
   list: List;
+  cardCount?: number;
   setSelectedPublicListId: (publicListId: PublicListId) => void;
 }
 
@@ -41,9 +44,11 @@ export default function List({
   children,
   index,
   list,
+  cardCount,
   setSelectedPublicListId,
 }: ListProps) {
   const { openModal } = useModal();
+  const [isAddingCard, setIsAddingCard] = useState(false);
   const { canCreateCard, canEditList, canDeleteList } = usePermissions();
   const { data: session } = authClient.useSession();
   const isCreator = list.createdBy && session?.user.id === list.createdBy;
@@ -82,6 +87,29 @@ export default function List({
     openModal("DELETE_LIST");
   };
 
+  const dropdownItems = [
+    ...(canCreateCard
+      ? [
+          {
+            label: t`Add a card`,
+            action: () => openNewCardForm(list.publicId),
+            icon: (
+              <HiOutlineSquaresPlus className="h-[18px] w-[18px] text-dark-900" />
+            ),
+          },
+        ]
+      : []),
+    ...(canDeleteList || isCreator
+      ? [
+          {
+            label: t`Delete list`,
+            action: handleOpenDeleteListConfirmation,
+            icon: <HiOutlineTrash className="h-[18px] w-[18px] text-dark-900" />,
+          },
+        ]
+      : []),
+  ];
+
   return (
     <Draggable
       key={list.publicId}
@@ -95,12 +123,12 @@ export default function List({
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className="dark-text-dark-1000 mr-5 h-fit min-w-[18rem] max-w-[18rem] rounded-md border border-light-400 bg-light-300 py-2 pl-2 pr-1 text-neutral-900 dark:border-dark-300 dark:bg-dark-100"
+          className="mr-2 flex h-fit max-h-full w-[272px] min-w-[272px] max-w-[272px] flex-col rounded-xl bg-trello-list p-2 text-[#172B4D] shadow-sm dark:bg-trello-list-dark dark:text-dark-1000"
         >
-          <div className="mb-2 flex justify-between">
+          <div className="mb-1 flex items-center gap-1">
             <form
               onSubmit={handleSubmit(onSubmit)}
-              className="w-full focus-visible:outline-none"
+              className="min-w-0 flex-1 focus-visible:outline-none"
             >
               <input
                 id="name"
@@ -108,67 +136,53 @@ export default function List({
                 {...register("name")}
                 onBlur={handleSubmit(onSubmit)}
                 readOnly={!canEdit}
-                className="w-full border-0 bg-transparent px-4 pt-1 text-sm font-medium text-neutral-900 focus:ring-0 focus-visible:outline-none dark:text-dark-1000"
+                className="w-full rounded border-0 bg-transparent px-2 py-1 text-sm font-semibold text-[#172B4D] focus:ring-2 focus:ring-trello-label-blue focus-visible:outline-none dark:text-dark-1000"
               />
             </form>
-            <div className="flex items-center">
-              <Tooltip
-                content={
-                  !canCreateCard ? t`You don't have permission` : undefined
-                }
-              >
-                <button
-                  className="mx-1 inline-flex h-fit items-center rounded-md p-1 px-1 text-sm font-semibold text-dark-50 hover:bg-light-400 disabled:opacity-60 disabled:cursor-not-allowed dark:hover:bg-dark-200"
-                  onClick={() => openNewCardForm(list.publicId)}
-                  disabled={!canCreateCard}
-                >
-                  <HiOutlinePlusSmall
-                    className="h-5 w-5 text-dark-900"
-                    aria-hidden="true"
-                  />
-                </button>
-              </Tooltip>
-              {(() => {
-                const dropdownItems = [
-                  ...(canCreateCard
-                    ? [
-                        {
-                          label: t`Add a card`,
-                          action: () => openNewCardForm(list.publicId),
-                          icon: (
-                            <HiOutlineSquaresPlus className="h-[18px] w-[18px] text-dark-900" />
-                          ),
-                        },
-                      ]
-                    : []),
-                  ...(canDeleteList || isCreator
-                    ? [
-                        {
-                          label: t`Delete list`,
-                          action: handleOpenDeleteListConfirmation,
-                          icon: (
-                            <HiOutlineTrash className="h-[18px] w-[18px] text-dark-900" />
-                          ),
-                        },
-                      ]
-                    : []),
-                ];
-
-                if (dropdownItems.length === 0) {
-                  return null;
-                }
-
-                return (
-                  <div className="relative mr-1 inline-block">
-                    <Dropdown items={dropdownItems}>
-                      <HiEllipsisHorizontal className="h-5 w-5 text-dark-900" />
-                    </Dropdown>
-                  </div>
-                );
-              })()}
-            </div>
+            {typeof cardCount === "number" && (
+              <span className="px-1 text-xs font-medium tabular-nums text-[#626F86] dark:text-dark-900">
+                {cardCount}
+              </span>
+            )}
+            {dropdownItems.length > 0 && (
+              <div className="relative ml-1 inline-block">
+                <Dropdown items={dropdownItems}>
+                  <span className="flex h-7 w-7 items-center justify-center rounded hover:bg-black/10 dark:hover:bg-white/10">
+                    <HiEllipsisHorizontal className="h-5 w-5 text-[#44546F] dark:text-dark-900" />
+                  </span>
+                </Dropdown>
+              </div>
+            )}
           </div>
+
           {children}
+
+          {canCreateCard &&
+            (isAddingCard ? (
+              <InlineCardComposer
+                listPublicId={list.publicId}
+                onClose={() => setIsAddingCard(false)}
+              />
+            ) : (
+              <div className="mt-1 flex items-center gap-1">
+                <button
+                  onClick={() => setIsAddingCard(true)}
+                  className="flex flex-1 items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#44546F] hover:bg-black/10 dark:text-dark-900 dark:hover:bg-white/10"
+                >
+                  <HiOutlinePlus className="h-4 w-4" aria-hidden="true" />
+                  {t`Add a card`}
+                </button>
+                <Tooltip content={t`Add a card (detailed)`}>
+                  <button
+                    onClick={() => openNewCardForm(list.publicId)}
+                    className="rounded-lg p-2 text-[#44546F] hover:bg-black/10 dark:text-dark-900 dark:hover:bg-white/10"
+                    aria-label={t`Add a card (detailed)`}
+                  >
+                    <HiOutlineSquaresPlus className="h-[18px] w-[18px]" />
+                  </button>
+                </Tooltip>
+              </div>
+            ))}
         </div>
       )}
     </Draggable>

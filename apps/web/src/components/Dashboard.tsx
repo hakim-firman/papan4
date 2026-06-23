@@ -3,12 +3,6 @@ import { t } from "@lingui/core/macro";
 import { env } from "next-runtime-env";
 import { useTheme } from "next-themes";
 import { useEffect, useRef, useState } from "react";
-import {
-  TbLayoutSidebarLeftCollapse,
-  TbLayoutSidebarLeftExpand,
-  TbLayoutSidebarRightCollapse,
-  TbLayoutSidebarRightExpand,
-} from "react-icons/tb";
 
 import { authClient } from "@kan/auth/client";
 
@@ -21,6 +15,7 @@ import { ChangePasswordFormConfirmation } from "~/views/settings/components/Chan
 import Button from "./Button";
 import Modal from "./modal";
 import SideNavigation from "./SideNavigation";
+import TopBar from "./TopBar";
 
 interface DashboardProps {
   children: React.ReactNode;
@@ -63,7 +58,25 @@ export default function Dashboard({
   );
 
   const [isSideNavOpen, setIsSideNavOpen] = useState(false);
+  // Desktop sidebar visibility (Trello-style: hidden by default, toggled from the top bar)
+  const [isSideNavVisible, setIsSideNavVisible] = useState(false);
+  const [isSideNavInit, setIsSideNavInit] = useState(false);
   const [isRightPanelOpen, setIsRightPanelOpen] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("kan_sidebar_desktop_visible");
+    if (saved !== null) setIsSideNavVisible(saved === "true");
+    setIsSideNavInit(true);
+  }, []);
+
+  useEffect(() => {
+    if (isSideNavInit) {
+      localStorage.setItem(
+        "kan_sidebar_desktop_visible",
+        String(isSideNavVisible),
+      );
+    }
+  }, [isSideNavVisible, isSideNavInit]);
 
   const sideNavRef = useRef<HTMLDivElement>(null);
   const rightPanelRef = useRef<HTMLDivElement>(null);
@@ -71,7 +84,9 @@ export default function Dashboard({
   const rightPanelButtonRef = useRef<HTMLButtonElement>(null);
 
   const toggleSideNav = () => {
+    // Mobile uses the overlay (isSideNavOpen); desktop uses display (isSideNavVisible).
     setIsSideNavOpen(!isSideNavOpen);
+    setIsSideNavVisible(!isSideNavVisible);
     if (!isSideNavOpen) {
       setIsRightPanelOpen(false);
     }
@@ -179,65 +194,33 @@ export default function Dashboard({
           background-color: ${!isDarkMode ? "hsl(0deg 0% 97.3%)" : "#1c1c1c"};
         }
       `}</style>
-      <div className="relative flex h-screen flex-col bg-light-50 dark:bg-dark-50 md:bg-light-100 md:p-3 md:dark:bg-dark-100">
-        {/* Mobile Header */}
-        <div className="flex h-12 items-center justify-between border-b border-light-300 bg-light-50 px-3 dark:border-dark-300 dark:bg-dark-50 md:hidden">
-          <button
-            ref={sideNavButtonRef}
-            onClick={toggleSideNav}
-            className="rounded p-1.5 transition-all hover:bg-light-200 dark:hover:bg-dark-100"
-          >
-            {isSideNavOpen ? (
-              <TbLayoutSidebarLeftCollapse
-                size={20}
-                className="text-light-900 dark:text-dark-900"
-              />
-            ) : (
-              <TbLayoutSidebarLeftExpand
-                size={20}
-                className="text-light-900 dark:text-dark-900"
-              />
-            )}
-          </button>
+      <div className="relative flex h-screen flex-col bg-light-100 dark:bg-dark-100">
+        {/* Trello-style global top bar */}
+        <TopBar
+          user={{
+            displayName: user?.name ?? session?.user.name,
+            email: user?.email ?? session?.user.email ?? "",
+            image: user?.image ?? undefined,
+          }}
+          isLoading={sessionLoading || userLoading}
+          isSideNavOpen={isSideNavOpen}
+          onToggleSideNav={toggleSideNav}
+          sideNavButtonRef={sideNavButtonRef}
+          hasRightPanel={hasRightPanel}
+          isRightPanelOpen={isRightPanelOpen}
+          onToggleRightPanel={toggleRightPanel}
+          rightPanelButtonRef={rightPanelButtonRef}
+        />
 
-          {hasRightPanel && (
-            <button
-              ref={rightPanelButtonRef}
-              onClick={toggleRightPanel}
-              className="rounded p-1.5 transition-all hover:bg-light-200 dark:hover:bg-dark-100"
-            >
-              {isRightPanelOpen ? (
-                <TbLayoutSidebarRightCollapse
-                  size={20}
-                  className="text-light-900 dark:text-dark-900"
-                />
-              ) : (
-                <TbLayoutSidebarRightExpand
-                  size={20}
-                  className="text-light-900 dark:text-dark-900"
-                />
-              )}
-            </button>
-          )}
-        </div>
-
-        <div className="flex h-[calc(100dvh-4.5rem)] min-h-0 w-full md:h-[calc(100dvh-1.5rem)]">
+        <div className="flex min-h-0 w-full flex-1">
           <div
             ref={sideNavRef}
-            className={`fixed top-12 z-40 h-[calc(100dvh-3rem)] w-[calc(100vw-1.5rem)] transform transition-transform duration-300 ease-in-out md:relative md:top-0 md:h-full md:w-auto md:translate-x-0 ${isSideNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"} `}
+            className={`fixed top-12 z-40 h-[calc(100dvh-3rem)] w-screen transform transition-transform duration-300 ease-in-out md:relative md:top-0 md:h-full md:w-auto md:translate-x-0 ${isSideNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"} ${isSideNavVisible ? "md:block" : "md:hidden"} `}
           >
-            <SideNavigation
-              user={{
-                displayName: user?.name ?? session?.user.name,
-                email: user?.email ?? session?.user.email ?? "",
-                image: user?.image ?? undefined,
-              }}
-              isLoading={sessionLoading || userLoading}
-              onCloseSideNav={closeSideNav}
-            />
+            <SideNavigation onCloseSideNav={closeSideNav} />
           </div>
 
-          <div className="relative h-full min-h-0 w-full overflow-hidden md:rounded-lg md:border md:border-light-300 md:bg-light-50 md:dark:border-dark-300 md:dark:bg-dark-50">
+          <div className="relative h-full min-h-0 w-full overflow-hidden">
             <div className="relative flex h-full min-h-0 w-full overflow-hidden">
               <div className="h-full w-full overflow-y-auto">{children}</div>
 

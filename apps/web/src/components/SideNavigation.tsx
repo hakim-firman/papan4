@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { useRouter } from "next/router";
 import { Button } from "@headlessui/react";
 import { t } from "@lingui/core/macro";
@@ -26,26 +25,15 @@ import templatesIconDark from "~/assets/templates-dark.json";
 import templatesIconLight from "~/assets/templates-light.json";
 import ButtonComponent from "~/components/Button";
 import ReactiveButton from "~/components/ReactiveButton";
-import UserMenu from "~/components/UserMenu";
 import WorkspaceMenu from "~/components/WorkspaceMenu";
 import { useWorkspace } from "~/providers/workspace";
 import { api } from "~/utils/api";
 
 interface SideNavigationProps {
-  user: UserType;
-  isLoading: boolean;
   onCloseSideNav?: () => void;
 }
 
-interface UserType {
-  displayName?: string | null | undefined;
-  email?: string | null | undefined;
-  image?: string | null | undefined;
-}
-
 export default function SideNavigation({
-  user,
-  isLoading,
   onCloseSideNav,
 }: SideNavigationProps) {
   const router = useRouter();
@@ -156,14 +144,12 @@ export default function SideNavigation({
         )}
       >
         <div>
-          <div className="hidden h-[45px] items-center justify-between pb-3 md:flex">
-            {!isCollapsed && (
-              <Link href="/" className="block">
-                <h1 className="pl-2 text-[16px] font-bold tracking-tight text-neutral-900 dark:text-dark-1000">
-                  kan.bn
-                </h1>
-              </Link>
+          <div
+            className={twMerge(
+              "hidden h-[45px] items-center pb-3 md:flex",
+              isCollapsed ? "justify-center" : "justify-end",
             )}
+          >
             <Button
               onClick={toggleCollapse}
               className={twMerge(
@@ -205,14 +191,6 @@ export default function SideNavigation({
         </div>
 
         <div className="space-y-2">
-          <UserMenu
-            displayName={user.displayName ?? undefined}
-            email={user.email ?? "Email not provided?"}
-            imageUrl={user.image ?? undefined}
-            isLoading={isLoading}
-            isCollapsed={isCollapsed}
-            onCloseSideNav={onCloseSideNav}
-          />
           {isCloudEnv &&
             !hasActiveSubscription(subscriptions, "pro") &&
             !hasActiveSubscription(subscriptions, "team") && (

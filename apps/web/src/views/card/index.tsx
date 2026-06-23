@@ -46,13 +46,21 @@ interface FormValues {
   description: string;
 }
 
-export function CardRightPanel({ isTemplate }: { isTemplate?: boolean }) {
+export function CardRightPanel({
+  isTemplate,
+  cardPublicId,
+}: {
+  isTemplate?: boolean;
+  cardPublicId?: string;
+}) {
   const router = useRouter();
   const { canEditCard } = usePermissions();
   const { data: session } = authClient.useSession();
-  const cardId = Array.isArray(router.query.cardId)
-    ? router.query.cardId[0]
-    : router.query.cardId;
+  const cardId =
+    cardPublicId ??
+    (Array.isArray(router.query.cardId)
+      ? router.query.cardId[0]
+      : router.query.cardId);
 
   const { data: card } = api.card.byId.useQuery(
     { cardPublicId: cardId ?? "" },
@@ -162,7 +170,17 @@ export function CardRightPanel({ isTemplate }: { isTemplate?: boolean }) {
   );
 }
 
-export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
+export default function CardPage({
+  isTemplate,
+  cardPublicId,
+  inModal,
+  onClose,
+}: {
+  isTemplate?: boolean;
+  cardPublicId?: string;
+  inModal?: boolean;
+  onClose?: () => void;
+}) {
   const router = useRouter();
   const utils = api.useUtils();
   const {
@@ -181,9 +199,11 @@ export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
     null,
   );
 
-  const cardId = Array.isArray(router.query.cardId)
-    ? router.query.cardId[0]
-    : router.query.cardId;
+  const cardId =
+    cardPublicId ??
+    (Array.isArray(router.query.cardId)
+      ? router.query.cardId[0]
+      : router.query.cardId);
 
   const {
     data: card,
@@ -194,14 +214,14 @@ export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
     { enabled: !!cardId && cardId.length >= 12 },
   );
 
-  // Redirect to 404 if card doesn't exist
+  // Redirect to 404 if card doesn't exist (only on the full page, never in the modal)
   useEffect(() => {
-    if (router.isReady && cardId && !isLoading) {
+    if (!inModal && router.isReady && cardId && !isLoading) {
       if (error?.data?.code === "NOT_FOUND" || (!card && !isLoading)) {
         router.replace("/404");
       }
     }
-  }, [router, cardId, isLoading, error, card]);
+  }, [router, cardId, isLoading, error, card, inModal]);
 
   const isCreator = card?.createdBy && session?.user.id === card.createdBy;
   const canEdit = canEditCard || isCreator;
@@ -317,9 +337,11 @@ export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
 
   return (
     <>
-      <PageHead
-        title={t`${card?.title ?? t`Card`} | ${board?.name ?? t`Board`}`}
-      />
+      {!inModal && (
+        <PageHead
+          title={t`${card?.title ?? t`Card`} | ${board?.name ?? t`Board`}`}
+        />
+      )}
       <div className="flex h-full flex-1 flex-col overflow-hidden">
         {/* Full-width top strip with board link and dropdown */}
         <div className="flex w-full items-center justify-between border-b-[1px] border-light-300 bg-light-50 px-8 py-2 dark:border-dark-300 dark:bg-dark-50">
@@ -369,13 +391,24 @@ export default function CardPage({ isTemplate }: { isTemplate?: boolean }) {
                   listPublicId={card?.list.publicId}
                   cardIndex={card?.index}
                 />
-                <Link
-                  href={`/${isTemplate ? "templates" : "boards"}/${boardId}`}
-                  className="flex h-7 w-7 items-center justify-center rounded-[5px] text-light-900 hover:bg-light-200 dark:text-dark-900 dark:hover:bg-dark-200"
-                  aria-label={t`Close`}
-                >
-                  <HiXMark className="h-4 w-4" />
-                </Link>
+                {inModal ? (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex h-7 w-7 items-center justify-center rounded-[5px] text-light-900 hover:bg-light-200 dark:text-dark-900 dark:hover:bg-dark-200"
+                    aria-label={t`Close`}
+                  >
+                    <HiXMark className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <Link
+                    href={`/${isTemplate ? "templates" : "boards"}/${boardId}`}
+                    className="flex h-7 w-7 items-center justify-center rounded-[5px] text-light-900 hover:bg-light-200 dark:text-dark-900 dark:hover:bg-dark-200"
+                    aria-label={t`Close`}
+                  >
+                    <HiXMark className="h-4 w-4" />
+                  </Link>
+                )}
               </div>
             </>
           )}

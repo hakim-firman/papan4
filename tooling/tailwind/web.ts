@@ -82,6 +82,39 @@ export default {
         "light-900": "hsl(0deg 0% 52.2%)",
         "light-950": "hsl(0deg 0% 43.5%)",
         "light-1000": "hsl(0deg 0% 9%)",
+        // Trello pixel-exact palette (board view / nav / sidebar)
+        trello: {
+          // chrome
+          nav: "#1D2125",
+          sidebar: "#1D2125",
+          // board backgrounds (solid)
+          blue: "#0079BF",
+          sky: "#00AECC",
+          green: "#519839",
+          lime: "#4BBF6B",
+          orange: "#D29034",
+          red: "#B04632",
+          purple: "#89609E",
+          pink: "#CD5A91",
+          black: "#4D4D4D",
+          grey: "#838C91",
+          // surfaces
+          list: "#F1F2F4",
+          "list-dark": "#101204",
+          card: "#FFFFFF",
+          "card-dark": "#22272B",
+          // label colors
+          "label-green": "#4BCE97",
+          "label-yellow": "#F5CD47",
+          "label-orange": "#FEA362",
+          "label-red": "#F87168",
+          "label-purple": "#9F8FEF",
+          "label-blue": "#579DFF",
+          "label-sky": "#6CC3E0",
+          "label-lime": "#94C748",
+          "label-pink": "#E774BB",
+          "label-black": "#8590A2",
+        },
       },
       screens: {
         "2xl": "1600px",

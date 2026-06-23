@@ -23,7 +23,6 @@ import { LabelForm } from "~/components/LabelForm";
 import Modal from "~/components/modal";
 import { NewWorkspaceForm } from "~/components/NewWorkspaceForm";
 import { PageHead } from "~/components/PageHead";
-import PatternedBackground from "~/components/PatternedBackground";
 import { StrictModeDroppable as Droppable } from "~/components/StrictModeDroppable";
 import { Tooltip } from "~/components/Tooltip";
 import { EditYouTubeModal } from "~/components/YouTubeEmbed/EditYouTubeModal";
@@ -36,6 +35,7 @@ import { usePopup } from "~/providers/popup";
 import { useWorkspace } from "~/providers/workspace";
 import { api } from "~/utils/api";
 import { formatToArray } from "~/utils/helpers";
+import CardPage, { CardRightPanel } from "~/views/card";
 import { DeleteCardConfirmation } from "~/views/card/components/DeleteCardConfirmation";
 import BoardDropdown from "./components/BoardDropdown";
 import Card from "./components/Card";
@@ -48,6 +48,7 @@ import { CardContextMoveListModal } from "./components/CardContextMoveListModal"
 import { DeleteBoardConfirmation } from "./components/DeleteBoardConfirmation";
 import { DeleteListConfirmation } from "./components/DeleteListConfirmation";
 import Filters from "./components/Filters";
+import { InlineListComposer } from "./components/InlineComposers";
 import List from "./components/List";
 import { NewCardForm } from "./components/NewCardForm";
 import { NewListForm } from "./components/NewListForm";
@@ -68,6 +69,8 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
     useModal();
   const [selectedPublicListId, setSelectedPublicListId] =
     useState<PublicListId>("");
+  const [isAddingList, setIsAddingList] = useState(false);
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
 
   const [contextMenu, setContextMenu] = useState<{
@@ -341,6 +344,15 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
     openModal(modalType, cardPublicId);
   };
 
+  useEffect(() => {
+    if (!openCardId) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpenCardId(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [openCardId]);
+
   const onDragEnd = ({
     source: _source,
     destination,
@@ -530,8 +542,9 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
         title={`${boardData?.name ?? (isTemplate ? t`Board` : t`Template`)} | ${workspace.name ?? t`Workspace`}`}
       />
       <div className="relative flex h-full flex-col">
-        <PatternedBackground />
-        <div className="z-10 flex w-full flex-col justify-between p-6 md:flex-row md:p-8">
+        {/* Trello-style coloured board background */}
+        <div className="pointer-events-none absolute inset-0 bg-trello-blue" />
+        <div className="z-10 flex w-full flex-col justify-between gap-2 bg-black/15 px-4 py-2.5 backdrop-blur-[2px] md:flex-row md:items-center">
           {isLoading && !boardData && (
             <div className="flex space-x-2">
               <div className="h-[2.3rem] w-[150px] animate-pulse rounded-[5px] bg-light-200 dark:bg-dark-100" />
@@ -548,7 +561,7 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
                 {...register("name")}
                 onBlur={canEditBoard ? handleSubmit(onSubmit) : undefined}
                 readOnly={!canEditBoard}
-                className="block border-0 bg-transparent p-0 py-0 font-bold leading-[2.3rem] tracking-tight text-neutral-900 focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed dark:text-dark-1000 sm:text-[1.2rem]"
+                className="block border-0 bg-transparent p-0 py-0 font-bold leading-[2.3rem] tracking-tight text-white drop-shadow-sm focus:ring-0 focus-visible:outline-none disabled:cursor-not-allowed sm:text-[1.2rem]"
               />
             </form>
           )}
@@ -691,6 +704,7 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
                             index={index}
                             key={index}
                             list={list}
+                            cardCount={list.cards.length}
                             setSelectedPublicListId={(publicListId) =>
                               setSelectedPublicListId(publicListId)
                             }
@@ -712,15 +726,29 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
                                       index={index}
                                       isDragDisabled={!canEditCard}
                                     >
-                                      {(provided) => (
+                                      {(provided, snapshot) => (
                                         <Link
                                           onClick={(e) => {
                                             if (
                                               card.publicId.startsWith(
                                                 "PLACEHOLDER",
                                               )
-                                            )
+                                            ) {
                                               e.preventDefault();
+                                              return;
+                                            }
+                                            // Open card detail as a Trello-style
+                                            // popup instead of navigating away.
+                                            // (cmd/ctrl/middle-click still opens
+                                            // the full page via the href.)
+                                            if (
+                                              e.metaKey ||
+                                              e.ctrlKey ||
+                                              e.shiftKey
+                                            )
+                                              return;
+                                            e.preventDefault();
+                                            setOpenCardId(card.publicId);
                                           }}
                                           onContextMenu={(e) => {
                                             if (
@@ -754,6 +782,12 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
                                           ref={provided.innerRef}
                                           {...provided.draggableProps}
                                           {...provided.dragHandleProps}
+                                          style={{
+                                            ...provided.draggableProps.style,
+                                            transform: snapshot.isDragging
+                                              ? `${provided.draggableProps.style?.transform ?? ""} rotate(4deg)`
+                                              : provided.draggableProps.style?.transform,
+                                          }}
                                         >
                                           <Card
                                             title={card.title}
@@ -782,8 +816,23 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
                             </Droppable>
                           </List>
                         ))}
-                        <div className="min-w-[0.75rem]" />
                         {provided.placeholder}
+                        {canCreateList &&
+                          (isAddingList ? (
+                            <InlineListComposer
+                              boardPublicId={boardId ?? ""}
+                              onClose={() => setIsAddingList(false)}
+                            />
+                          ) : (
+                            <button
+                              onClick={() => setIsAddingList(true)}
+                              className="mr-2 flex h-fit w-[272px] min-w-[272px] max-w-[272px] items-center gap-2 rounded-xl bg-white/20 px-3 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:bg-white/30"
+                            >
+                              <HiOutlinePlusSmall className="h-5 w-5" />
+                              {t`Add another list`}
+                            </button>
+                          ))}
+                        <div className="min-w-[0.75rem]" />
                       </div>
                     )}
                   </Droppable>
@@ -802,6 +851,32 @@ export default function BoardPage({ isTemplate }: { isTemplate?: boolean }) {
           />
         )}
         {renderModalContent()}
+        {openCardId && (
+          <div
+            className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:p-8"
+            onMouseDown={() => setOpenCardId(null)}
+          >
+            <div
+              className="relative mt-[5vh] flex h-[85vh] w-full max-w-[880px] overflow-hidden rounded-xl border border-light-300 bg-light-50 shadow-2xl dark:border-dark-300 dark:bg-dark-50"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="min-w-0 flex-1 overflow-y-auto">
+                <CardPage
+                  isTemplate={isTemplate}
+                  cardPublicId={openCardId}
+                  inModal
+                  onClose={() => setOpenCardId(null)}
+                />
+              </div>
+              <div className="hidden w-[340px] flex-shrink-0 overflow-y-auto border-l border-light-300 dark:border-dark-300 md:block">
+                <CardRightPanel
+                  isTemplate={isTemplate}
+                  cardPublicId={openCardId}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );
